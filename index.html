@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Item List</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f3f4f6;
+    }
+
+    .app {
+      width: min(720px, 99vw);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 1rem 0;
+    }
+
+    .item-title {
+      color: #4c4c4c;
+      margin: 40px 0;
+    }
+
+    #items {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 1rem;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .title {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-con229tent: center;
+      cursor: pointer;
+      color: #374151;
+    }
+
+    .icon-btn:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .icon-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .add-card {
+      border: 2px dashed #cbd5e1;
+      background: #f8fafc;
+      color: #334155;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .add-form {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+
+    .add-form input {
+      padding: 0.6rem 0.75rem;
+      min-width: 200px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+    }
+
+    .btn {
+      padding: 0.55rem 0.9rem;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #1d4ed8;
+    }
+
+    .btn.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn.secondary:hover {
+      background: #d1d5db;
+    }
+
+    .error {
+      color: #b00020;
+      margin-top: 0.75rem;
+      text-align: center;
+    }
+
+    .card-body {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      flex-direction: column
+    }
+
+    .thumb {
+      width: 100%;
+      min-height: 155px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+      flex: 0 0 auto;
+    }
+
+    .card-actions {
+      margin-left: auto;
+    }
+
+    .link-btn {
+      background: transparent;
+      border: none;
+      color: #ef4444;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    .link-btn:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1 class="item-title">Product List</h1>
+    <div id="items"></div>
+    <div id="status" class="error" aria-live="polite"></div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3000';
+    let showAddForm = false;
+
+    async function fetchItems() {
+      const res = await fetch(API + '/items');
+      if (!res.ok) throw new Error('Failed to fetch items');
+      return res.json();
+    }
+
+    async function deleteItem(id) {
+      const res = await fetch(API + '/items/' + id, { method: 'DELETE' });
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || 'Failed to delete item');
+      }
+      return res.json();
+    }
+
+    function createItemCard(it) {
+      const card = document.createElement('div');
+      const body = document.createElement('div');
+      const thumb = document.createElement('div');
+      const title = document.createElement('div');
+      const actions = document.createElement('div');
+      const del = document.createElement('button');
+
+      card.className = 'card';
+      body.className = 'card-body';
+      thumb.className = 'thumb';
+      title.className = 'title';
+      // title.textContent = `${it.id}: ${it.name}`;
+      title.textContent = `${it.name}`;
+      actions.className = 'card-actions';
+      del.className = 'link-btn';
+      del.setAttribute('aria-label', 'Delete item');
+      del.setAttribute('title', 'Delete item');
+      del.textContent = 'Delete';
+
+      del.addEventListener('click', async () => {
+        document.getElementById('status').textContent = '';
+        try {
+          await deleteItem(it.id);
+          await refresh();
+        } catch (e) {
+          document.getElementById('status').textContent = e.message;
+        }
+      });
+
+      actions.appendChild(del);
+      body.appendChild(thumb);
+      body.appendChild(title);
+      body.appendChild(actions);
+      card.appendChild(body);
+      return card;
+    }
+
+    function createAddCard() {
+      const card = document.createElement('div');
+      const btn = document.createElement('button');
+
+      card.className = 'card add-card';
+
+      btn.className = 'btn';
+      btn.textContent = 'Add Item';
+
+      btn.addEventListener('click', () => {
+        showAddForm = true;
+        renderItems(window.__lastItems || []);
+        setTimeout(() => {
+          const input = document.getElementById('nameInput');
+          if (input) input.focus();
+        }, 0);
+      });
+      card.appendChild(btn);
+      return card;
+    }
+
+    function createAddFormCard() {
+      const card = document.createElement('div');
+      const form = document.createElement('div');
+      const input = document.createElement('input');
+      const add = document.createElement('button');
+      const cancel = document.createElement('button');
+
+      card.className = 'card';
+      form.className = 'add-form';
+      input.id = 'nameInput';
+      input.type = 'text';
+      input.placeholder = 'New item name';
+      add.className = 'btn';
+      add.textContent = 'Add';
+      cancel.className = 'btn secondary';
+      cancel.textContent = 'Cancel';
+
+      add.addEventListener('click', async () => {
+        const name = input.value.trim();
+        if (!name) return;
+        try {
+          await addItem(name);
+          showAddForm = false;
+          await refresh();
+        } catch (e) {
+          document.getElementById('status').textContent = e.message;
+        }
+      });
+      cancel.addEventListener('click', () => {
+        showAddForm = false;
+        renderItems(window.__lastItems || []);
+      });
+      form.appendChild(input);
+      form.appendChild(add);
+      form.appendChild(cancel);
+      card.appendChild(form);
+      return card;
+    }
+
+    function renderItems(list) {
+      const container = document.getElementById('items');
+      window.__lastItems = list;
+      container.innerHTML = '';
+      if (Array.isArray(list)) {
+        list.forEach(it => container.appendChild(createItemCard(it)));
+      }
+      container.appendChild(showAddForm ? createAddFormCard() : createAddCard());
+    }
+
+    async function addItem(name) {
+      const res = await fetch(API + '/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || 'Failed to add item');
+      }
+      return res.json();
+    }
+
+    async function refresh() {
+      document.getElementById('status').textContent = '';
+      try {
+        const list = await fetchItems();
+        renderItems(list);
+      } catch (e) {
+        document.getElementById('status').textContent = e.message;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', refresh);
+  </script>
+</body>
+</html>
